@@ -17,12 +17,16 @@ from azure.cognitiveservices.vision.face.models import TrainingStatusType, Perso
 # Importing OpenCV Dependency:
 from cv2 import cv2
 
-import asyncio
+# Importing Services module:
+import services
 
 
 def init_face_api():
     KEY = os.environ.get('CORTEX_KEY')
     ENDPOINT = "https://cortex-face-api.cognitiveservices.azure.com/"
+    # Create an authenticated FaceClient.
+    face_client = FaceClient(ENDPOINT, CognitiveServicesCredentials(KEY))
+    return face_client
 
 
 async def init_webcam():
@@ -44,13 +48,13 @@ async def init_webcam():
         # decide whether to analyze:
         if should_analyze(frame):
             # save frame locally:
-            save_frame(frame)
+            # save_frame(frame)
 
             # analyze frame and consume result:
-            # r = await analyze_frame(frame)
-            # consume_result(r)
+            r = await analyze_frame(frame)
+            consume_result(r)
 
-        # wait for exit:
+            # wait for exit:
         c = cv2.waitKey(1)
         if c == 27:
             break
@@ -77,9 +81,19 @@ def should_analyze(frame):
 
     return (FRAMES_COUNT % FRAMES_ANALYSIS_RATE == 0)
 
-    # def analyze_frame(frame):
 
-    # def consume_result(result):
+async def analyze_frame(frame):
+    global face_client
+    return services.get_detected_faces(face_client, frame)
+
+
+def consume_result(result):
+    print('Detected Face Info: ')
+    for face in result:
+        attributes = face.face_attributes
+        print("* Emotion:", attributes.emotion)
+        print("* Smile:", attributes.smile)
+    print()
 
 
 # Settings:
@@ -87,5 +101,5 @@ FRAMES_ANALYSIS_RATE = 20   # this means only 1 in 20 frames get analyzed
 FRAMES_COUNT = 0
 
 # initialize app:
-init_face_api()
+face_client = init_face_api()
 asyncio.run(init_webcam())
